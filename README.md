@@ -445,6 +445,31 @@ LITELLM_MODEL=openai/deepseek-chat
 
 > 也可以使用 `python main.py --serve` (等效命令)
 
+## 🛠️ Makefile 快捷命令
+
+项目提供 Makefile 封装常用操作，运行 `make help` 查看全部命令：
+
+```bash
+make install        # 安装 Python 依赖
+make install-web    # 安装并构建前端
+make run            # 运行完整分析（所有自选股 + 大盘复盘）
+make run-debug      # 调试模式运行
+make dry-run        # 仅获取数据，不调用 LLM 分析
+make stocks S=600519,AAPL  # 分析指定股票
+make market-review  # 仅运行大盘复盘
+make schedule       # 启动定时任务模式
+make backtest       # 运行回测
+make serve          # 启动分析 + Web 服务
+make web            # 仅启动 Web 服务（不自动分析）
+make api            # 直接用 uvicorn 启动 API（热重载）
+make kill-web       # 停止占用 8000 端口的进程
+make test           # 运行测试（跳过网络依赖）
+make lint           # 代码检查
+make check          # CI 检查（等同 ci_gate.sh）
+make test-llm       # 测试 LLM 连通性
+make clean          # 清理缓存和临时文件
+```
+
 ## 🗺️ Roadmap
 
 查看已支持的功能和未来规划：[更新日志](docs/CHANGELOG.md)
