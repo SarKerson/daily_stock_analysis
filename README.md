@@ -261,36 +261,66 @@
 > - **UI 勾选方式**：仅在 GitHub Actions 手动触发时可见，不影响定时任务，适合临时需求
 > - **断点续传与 `--dry-run` 的数据存在性判断**：会按股票所属市场的本地时区和交易日历解析“最新可复用交易日”；周末/节假日复用最近交易日，交易日盘中复用上一已完成交易日，盘后若当日数据已落库则可直接跳过。详细规则见 [完整指南](docs/full-guide.md)。
 
-### 方式二：本地运行 / Docker 部署
+### 方式二：本地运行
+
+> 从零开始，5 步跑通第一次分析。
+
+**第 1 步：克隆项目**
 
 ```bash
-# 克隆项目
-git clone https://github.com/ZhuLinsen/daily_stock_analysis.git && cd daily_stock_analysis
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量
-cp .env.example .env && vim .env
-
-# 运行分析
-python main.py
+git clone https://github.com/ZhuLinsen/daily_stock_analysis.git
+cd daily_stock_analysis
 ```
 
-如果你不用 Web，推荐直接在 `.env` 里按条写模型渠道：
+**第 2 步：安装依赖**
+
+```bash
+make install          # 自动创建虚拟环境并安装 Python 依赖
+# 如果没有 make，也可以手动执行：
+# pip install -r requirements.txt
+```
+
+**第 3 步：配置环境变量**
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`，最少只需填 3 项即可运行：
 
 ```env
-LLM_CHANNELS=primary
-LLM_PRIMARY_PROTOCOL=openai
-LLM_PRIMARY_BASE_URL=https://api.deepseek.com/v1
-LLM_PRIMARY_API_KEY=sk-xxxxxxxx
-LLM_PRIMARY_MODELS=deepseek-chat
-LITELLM_MODEL=openai/deepseek-chat
+# 1. 你想分析的股票（A股/港股/美股 混写，逗号分隔）
+STOCK_LIST=600519,HK00700,AAPL
+
+# 2. AI 模型 API Key（任选一个，推荐 Gemini 免费额度）
+GEMINI_API_KEY=你的key
+# 或 DeepSeek: DEEPSEEK_API_KEY=你的key
+# 或 OpenAI 兼容 API:
+# OPENAI_API_KEY=你的key
+# OPENAI_BASE_URL=https://你的api地址/v1
+# LITELLM_MODEL=openai/模型名
+
+# 3. 搜索引擎（获取股票新闻，推荐 Tavily 免费额度）
+TAVILY_API_KEYS=你的key
 ```
 
-保存后也可以在 Web 设置页继续编辑同一组字段；不会要求额外配置文件。
+> 完整配置项说明见 `.env.example` 和 [LLM 配置指南](docs/LLM_CONFIG_GUIDE.md)。
 
-如果同时启用了高级模型路由 YAML（`LITELLM_CONFIG`），YAML 主要用于定义可用模型和路由规则（`model_list`）；运行时主模型 / 备选模型 / Vision / Temperature 仍由 `LITELLM_MODEL`、`LITELLM_FALLBACK_MODELS`、`VISION_MODEL`、`LLM_TEMPERATURE` 等字段决定。渠道编辑器只保存渠道条目，不会覆盖这些运行时字段的选择。
+**第 4 步：运行分析**
+
+```bash
+make run              # 分析所有自选股 + 大盘复盘
+```
+
+分析完成后，报告会输出到终端和日志文件。如果配置了通知渠道（飞书/企业微信/Telegram/邮件等），报告会自动推送。
+
+**第 5 步（可选）：启动 Web 界面查看报告**
+
+```bash
+make install-web      # 首次需要：构建前端
+make web              # 启动 Web 服务
+# 浏览器打开 http://127.0.0.1:8000
+```
 
 > Docker 部署、定时任务配置请参考 [完整指南](docs/full-guide.md)
 > 桌面客户端打包请参考 [桌面端打包说明](docs/desktop-package.md)
@@ -447,27 +477,47 @@ LITELLM_MODEL=openai/deepseek-chat
 
 ## 🛠️ Makefile 快捷命令
 
-项目提供 Makefile 封装常用操作，运行 `make help` 查看全部命令：
+项目提供 Makefile 封装常用操作，运行 `make help` 查看全部命令。
+
+### 日常使用
 
 ```bash
-make install        # 安装 Python 依赖
-make install-web    # 安装并构建前端
-make run            # 运行完整分析（所有自选股 + 大盘复盘）
-make run-debug      # 调试模式运行
-make dry-run        # 仅获取数据，不调用 LLM 分析
-make stocks S=600519,AAPL  # 分析指定股票
-make market-review  # 仅运行大盘复盘
-make schedule       # 启动定时任务模式
-make backtest       # 运行回测
-make serve          # 启动分析 + Web 服务
-make web            # 仅启动 Web 服务（不自动分析）
-make api            # 直接用 uvicorn 启动 API（热重载）
-make kill-web       # 停止占用 8000 端口的进程
-make test           # 运行测试（跳过网络依赖）
-make lint           # 代码检查
-make check          # CI 检查（等同 ci_gate.sh）
-make test-llm       # 测试 LLM 连通性
-make clean          # 清理缓存和临时文件
+# 我想分析所有自选股
+make run
+
+# 我只想看某几只股票
+make stocks S=600519,AAPL,HK00700
+
+# 我只想看大盘复盘，不分析个股
+make market-review
+
+# 我想打开 Web 界面查看历史报告
+make web                  # 浏览器打开 http://127.0.0.1:8000
+make kill-web             # 用完后关闭
+
+# 我想每天自动定时分析（本地）
+make schedule             # 按 .env 中的 SCHEDULE_TIME 定时执行
+```
+
+### 首次安装 / 环境搭建
+
+```bash
+make install              # 安装 Python 依赖
+make install-web          # 构建前端（使用 Web 界面前需要执行一次）
+make test-llm             # 验证 LLM API Key 是否配置正确
+```
+
+### 开发调试
+
+```bash
+make run-debug            # 调试模式，输出详细日志
+make dry-run              # 仅获取数据，不调用 LLM（验证数据源）
+make api                  # uvicorn 热重载模式启动 API
+make test                 # 运行测试（跳过网络依赖）
+make lint                 # 代码检查
+make check                # CI 完整检查（等同 ci_gate.sh）
+make backtest             # 运行回测（验证历史分析准确率）
+make clean                # 清理 __pycache__ 等临时文件
 ```
 
 ## 🗺️ Roadmap
