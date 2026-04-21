@@ -7,8 +7,8 @@ from src.config import Config, resolve_news_window_days
 
 
 class NewsStrategyConfigTestCase(unittest.TestCase):
-    def test_invalid_profile_fallback_to_short(self) -> None:
-        self.assertEqual(Config._parse_news_strategy_profile("bad_value"), "short")
+    def test_invalid_profile_fallback_to_swing(self) -> None:
+        self.assertEqual(Config._parse_news_strategy_profile("bad_value"), "swing")
 
     def test_window_respects_news_max_age_days(self) -> None:
         # medium=7 but max-age=3 -> effective=3

@@ -94,7 +94,16 @@ class TrendAnalysisResult:
     ma10: float = 0.0
     ma20: float = 0.0
     ma60: float = 0.0
+    ma120: float = 0.0
+    ma250: float = 0.0
     current_price: float = 0.0
+
+    # 中期趋势结构
+    medium_term_trend: str = ""          # 中期趋势描述（基于 MA60/120/250）
+    medium_term_strength: float = 0.0    # 中期趋势强度 0-100
+    weekly_support: float = 0.0          # 周线级支撑位
+    weekly_resistance: float = 0.0       # 周线级压力位
+    atr_20: float = 0.0                  # 20日ATR（波动率）
     
     # 乖离率（与 MA5 的偏离度）
     bias_ma5: float = 0.0            # (Close - MA5) / MA5 * 100
@@ -142,7 +151,14 @@ class TrendAnalysisResult:
             'ma10': self.ma10,
             'ma20': self.ma20,
             'ma60': self.ma60,
+            'ma120': self.ma120,
+            'ma250': self.ma250,
             'current_price': self.current_price,
+            'medium_term_trend': self.medium_term_trend,
+            'medium_term_strength': self.medium_term_strength,
+            'weekly_support': self.weekly_support,
+            'weekly_resistance': self.weekly_resistance,
+            'atr_20': self.atr_20,
             'bias_ma5': self.bias_ma5,
             'bias_ma10': self.bias_ma10,
             'bias_ma20': self.bias_ma20,
@@ -237,6 +253,11 @@ class StockTrendAnalyzer:
         result.ma10 = float(latest['MA10'])
         result.ma20 = float(latest['MA20'])
         result.ma60 = float(latest.get('MA60', 0))
+        result.ma120 = float(latest.get('MA120', 0))
+        result.ma250 = float(latest.get('MA250', 0))
+
+        # 0. 中期趋势结构分析（基于 MA60/120/250）
+        self._analyze_medium_term(df, result)
 
         # 1. 趋势判断
         self._analyze_trend(df, result)
@@ -271,6 +292,14 @@ class StockTrendAnalyzer:
             df['MA60'] = df['close'].rolling(window=60).mean()
         else:
             df['MA60'] = df['MA20']  # 数据不足时使用 MA20 替代
+        if len(df) >= 120:
+            df['MA120'] = df['close'].rolling(window=120).mean()
+        else:
+            df['MA120'] = df['MA60']
+        if len(df) >= 250:
+            df['MA250'] = df['close'].rolling(window=250).mean()
+        else:
+            df['MA250'] = df['MA120']
         return df
 
     def _calculate_macd(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -388,7 +417,73 @@ class StockTrendAnalyzer:
             result.trend_status = TrendStatus.CONSOLIDATION
             result.ma_alignment = "均线缠绕，趋势不明"
             result.trend_strength = 50
-    
+
+    def _analyze_medium_term(self, df: pd.DataFrame, result: TrendAnalysisResult) -> None:
+        """
+        中期趋势结构分析（2-4 周视角）
+
+        基于 MA60/MA120/MA250 排列判断中期方向，
+        计算 20 日 ATR 和周线级支撑压力。
+        """
+        price = result.current_price
+        ma60 = result.ma60
+        ma120 = result.ma120
+        ma250 = result.ma250
+
+        # --- 20日ATR ---
+        if len(df) >= 21:
+            high_low = df['high'] - df['low']
+            high_close = (df['high'] - df['close'].shift(1)).abs()
+            low_close = (df['low'] - df['close'].shift(1)).abs()
+            tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+            result.atr_20 = round(float(tr.rolling(window=20).mean().iloc[-1]), 4)
+
+        # --- 周线级支撑压力（20日最低/最高） ---
+        if len(df) >= 20:
+            recent_20 = df.tail(20)
+            result.weekly_support = round(float(recent_20['low'].min()), 4)
+            result.weekly_resistance = round(float(recent_20['high'].max()), 4)
+
+        # --- 60日区间支撑压力 ---
+        if len(df) >= 60:
+            recent_60 = df.tail(60)
+            support_60 = float(recent_60['low'].min())
+            resistance_60 = float(recent_60['high'].max())
+        else:
+            support_60 = result.weekly_support
+            resistance_60 = result.weekly_resistance
+
+        # --- MA60/120/250 排列判断 ---
+        if ma60 <= 0 or ma120 <= 0:
+            result.medium_term_trend = "数据不足，无法判断中期趋势"
+            result.medium_term_strength = 50
+            return
+
+        if price > ma60 > ma120 > ma250 and ma250 > 0:
+            result.medium_term_trend = "中期强势多头：价格 > MA60 > MA120 > MA250"
+            result.medium_term_strength = 90
+        elif price > ma60 > ma120:
+            result.medium_term_trend = "中期多头：价格 > MA60 > MA120"
+            result.medium_term_strength = 75
+        elif price > ma60:
+            result.medium_term_trend = "中期偏多：价格站上 MA60"
+            result.medium_term_strength = 60
+        elif price > ma120:
+            result.medium_term_trend = "中期震荡偏多：价格在 MA60 下方但高于 MA120"
+            result.medium_term_strength = 50
+        elif price < ma60 < ma120 < ma250 and ma250 > 0:
+            result.medium_term_trend = "中期强势空头：价格 < MA60 < MA120 < MA250"
+            result.medium_term_strength = 10
+        elif price < ma60 < ma120:
+            result.medium_term_trend = "中期空头：价格 < MA60 < MA120"
+            result.medium_term_strength = 25
+        elif price < ma60:
+            result.medium_term_trend = "中期偏空：价格在 MA60 下方"
+            result.medium_term_strength = 35
+        else:
+            result.medium_term_trend = "中期震荡：均线缠绕"
+            result.medium_term_strength = 50
+
     def _calculate_bias(self, result: TrendAnalysisResult) -> None:
         """
         计算乖离率

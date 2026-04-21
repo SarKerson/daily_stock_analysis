@@ -54,6 +54,7 @@ AGENT_MAX_STEPS_DEFAULT = 10
 NEWS_STRATEGY_WINDOWS: Dict[str, int] = {
     "ultra_short": 1,
     "short": 3,
+    "swing": 14,
     "medium": 7,
     "long": 30,
 }
@@ -161,8 +162,8 @@ def parse_env_float(
 
 def normalize_news_strategy_profile(value: Optional[str]) -> str:
     """Normalize news strategy profile to known values."""
-    candidate = (value or "short").strip().lower()
-    return candidate if candidate in NEWS_STRATEGY_WINDOWS else "short"
+    candidate = (value or "swing").strip().lower()
+    return candidate if candidate in NEWS_STRATEGY_WINDOWS else "swing"
 
 
 def resolve_news_window_days(news_max_age_days: int, news_strategy_profile: Optional[str]) -> int:
@@ -513,8 +514,8 @@ class Config:
     social_sentiment_api_url: str = "https://api.adanos.org"
 
     # === 新闻与分析筛选配置 ===
-    news_max_age_days: int = 3   # 新闻最大时效（天）
-    news_strategy_profile: str = "short"  # 新闻窗口策略档位：ultra_short/short/medium/long
+    news_max_age_days: int = 14   # 新闻最大时效（天）
+    news_strategy_profile: str = "swing"  # 新闻窗口策略档位：ultra_short/short/swing/medium/long
     bias_threshold: float = 5.0  # 乖离率阈值（%），超过此值提示不追高
 
     # === Agent 模式配置 ===
@@ -1167,9 +1168,9 @@ class Config:
             searxng_public_instances_enabled=searxng_public_instances_enabled,
             social_sentiment_api_key=os.getenv('SOCIAL_SENTIMENT_API_KEY') or None,
             social_sentiment_api_url=os.getenv('SOCIAL_SENTIMENT_API_URL', 'https://api.adanos.org').rstrip('/'),
-            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 3, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
+            news_max_age_days=parse_env_int(os.getenv('NEWS_MAX_AGE_DAYS'), 14, field_name='NEWS_MAX_AGE_DAYS', minimum=1),
             news_strategy_profile=cls._parse_news_strategy_profile(
-                os.getenv('NEWS_STRATEGY_PROFILE', 'short')
+                os.getenv('NEWS_STRATEGY_PROFILE', 'swing')
             ),
             bias_threshold=parse_env_float(os.getenv('BIAS_THRESHOLD'), 5.0, field_name='BIAS_THRESHOLD', minimum=1.0),
             agent_litellm_model=agent_litellm_model,
@@ -1823,13 +1824,13 @@ class Config:
 
     @classmethod
     def _parse_news_strategy_profile(cls, value: Optional[str]) -> str:
-        """Parse NEWS_STRATEGY_PROFILE, fallback to short for invalid values."""
+        """Parse NEWS_STRATEGY_PROFILE, fallback to swing for invalid values."""
         normalized = normalize_news_strategy_profile(value)
-        raw = (value or "short").strip().lower()
+        raw = (value or "swing").strip().lower()
         if raw != normalized:
             logging.getLogger(__name__).warning(
-                "NEWS_STRATEGY_PROFILE '%s' invalid, fallback to 'short' "
-                "(valid: ultra_short/short/medium/long)",
+                "NEWS_STRATEGY_PROFILE '%s' invalid, fallback to 'swing' "
+                "(valid: ultra_short/short/swing/medium/long)",
                 value,
             )
         return normalized

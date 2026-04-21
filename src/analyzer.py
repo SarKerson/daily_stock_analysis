@@ -353,7 +353,7 @@ class AnalysisResult:
     # ========== 走势分析 ==========
     trend_analysis: str = ""  # 走势形态分析（支撑位、压力位、趋势线等）
     short_term_outlook: str = ""  # 短期展望（1-3日）
-    medium_term_outlook: str = ""  # 中期展望（1-2周）
+    medium_term_outlook: str = ""  # 中期展望（2-4周）
 
     # ========== 技术面分析 ==========
     technical_analysis: str = ""  # 技术指标综合分析
@@ -607,7 +607,7 @@ class GeminiAnalyzer:
 
     "trend_analysis": "走势形态分析",
     "short_term_outlook": "短期1-3日展望",
-    "medium_term_outlook": "中期1-2周展望",
+    "medium_term_outlook": "中期2-4周展望（基于MA60/120/250结构、20日ATR和支撑压力区间）",
     "technical_analysis": "技术面综合分析",
     "ma_analysis": "均线系统分析",
     "volume_analysis": "量能分析",
@@ -757,7 +757,7 @@ class GeminiAnalyzer:
 
     "trend_analysis": "走势形态分析",
     "short_term_outlook": "短期1-3日展望",
-    "medium_term_outlook": "中期1-2周展望",
+    "medium_term_outlook": "中期2-4周展望（基于MA60/120/250结构、20日ATR和支撑压力区间）",
     "technical_analysis": "技术面综合分析",
     "ma_analysis": "均线系统分析",
     "volume_analysis": "量能分析",
@@ -1514,6 +1514,31 @@ class GeminiAnalyzer:
 | MA10 | {today.get('ma10', 'N/A')} | 中短期趋势线 |
 | MA20 | {today.get('ma20', 'N/A')} | 中期趋势线 |
 | 均线形态 | {context.get('ma_status', unknown_text)} | 多头/空头/缠绕 |
+"""
+
+        # 添加中期趋势结构（MA60/120/250 + ATR）
+        trend_result = context.get('trend_result')
+        if trend_result and isinstance(trend_result, dict):
+            mt_trend = trend_result.get('medium_term_trend', '')
+            mt_strength = trend_result.get('medium_term_strength', '')
+            w_support = trend_result.get('weekly_support', '')
+            w_resistance = trend_result.get('weekly_resistance', '')
+            atr_20_val = trend_result.get('atr_20', '')
+            ma120_val = trend_result.get('ma120', 'N/A')
+            ma250_val = trend_result.get('ma250', 'N/A')
+            if mt_trend:
+                prompt += f"""
+### 中期趋势结构（2-4周视角）
+| 指标 | 数值 | 说明 |
+|------|------|------|
+| MA60 | {today.get('ma60', 'N/A')} | 季线 |
+| MA120 | {ma120_val} | 半年线 |
+| MA250 | {ma250_val} | 年线 |
+| 中期趋势 | {mt_trend} | 基于 MA60/120/250 排列 |
+| 中期强度 | {mt_strength} | 0-100 |
+| 20日支撑 | {w_support} | 近20个交易日最低点 |
+| 20日压力 | {w_resistance} | 近20个交易日最高点 |
+| 20日ATR | {atr_20_val} | 日均波动幅度 |
 """
         
         # 添加实时行情数据（量比、换手率等）

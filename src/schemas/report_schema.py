@@ -105,6 +105,18 @@ class PositionStrategy(BaseModel):
     risk_control: Optional[str] = None
 
 
+class MediumTermOutlook(BaseModel):
+    """Medium-term outlook (2-4 weeks)."""
+
+    trend_direction: Optional[str] = None
+    key_support_zone: Optional[str] = None
+    key_resistance_zone: Optional[str] = None
+    catalyst_timeline: Optional[List[str]] = None
+    risk_events: Optional[List[str]] = None
+    position_sizing: Optional[str] = None
+    holding_period: Optional[str] = None
+
+
 class BattlePlan(BaseModel):
     """Battle plan block."""
 
@@ -119,6 +131,7 @@ class Dashboard(BaseModel):
     core_conclusion: Optional[CoreConclusion] = None
     data_perspective: Optional[DataPerspective] = None
     intelligence: Optional[Intelligence] = None
+    medium_term_outlook: Optional[MediumTermOutlook] = None
     battle_plan: Optional[BattlePlan] = None
 
 
