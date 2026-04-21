@@ -71,15 +71,15 @@ class SearchNewsFreshnessTestCase(unittest.TestCase):
         kwargs = mock_search.call_args[1]
         self.assertEqual(kwargs["days"], 3)
 
-    def test_invalid_profile_falls_back_to_short(self) -> None:
-        """Invalid profile should fallback to short (3 days)."""
+    def test_invalid_profile_falls_back_to_swing(self) -> None:
+        """Invalid profile should fallback to swing (14 days)."""
         service, mock_search = self._create_service_with_mock_provider(
             news_max_age_days=30,
             news_strategy_profile="invalid_profile",
         )
         service.search_stock_news("600519", "贵州茅台", max_results=5)
         kwargs = mock_search.call_args[1]
-        self.assertEqual(kwargs["days"], 3)
+        self.assertEqual(kwargs["days"], 14)
 
     def test_search_stock_news_strict_filters(self) -> None:
         """Drop old/unknown/future+2, keep future+1 and within-window dates."""
